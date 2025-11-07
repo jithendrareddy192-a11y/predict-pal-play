@@ -8,6 +8,8 @@ import ThinkingDots from "@/components/ThinkingDots";
 import FeedbackMessage from "@/components/FeedbackMessage";
 import ScoreDisplay from "@/components/ScoreDisplay";
 import CategorySelector from "@/components/CategorySelector";
+import HintsPanel from "@/components/HintsPanel";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
@@ -22,8 +24,14 @@ const Index = () => {
   const [score, setScore] = useState(0);
   const [rounds, setRounds] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
+  const [hintsUsed, setHintsUsed] = useState({
+    firstLetter: false,
+    lastLetter: false,
+    wordLength: false,
+  });
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     languageModel.setDifficulty(difficulty);
@@ -40,8 +48,42 @@ const Index = () => {
       setAiPrediction("");
       setShowResult(false);
       setIsCorrect(false);
+      setHintsUsed({ firstLetter: false, lastLetter: false, wordLength: false });
       setTimeout(() => inputRef.current?.focus(), 100);
     }
+  };
+
+  const handleUseHint = (hintType: 'firstLetter' | 'lastLetter' | 'wordLength') => {
+    if (score < 5) {
+      toast({
+        title: "Not enough points! 😅",
+        description: "You need at least 5 points to use a hint.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (hintsUsed[hintType]) {
+      toast({
+        title: "Already used! 🤔",
+        description: "You've already revealed this hint.",
+      });
+      return;
+    }
+
+    setScore(prev => prev - 5);
+    setHintsUsed(prev => ({ ...prev, [hintType]: true }));
+
+    const hintLabels = {
+      firstLetter: '📝 First Letter',
+      lastLetter: '📌 Last Letter',
+      wordLength: '📏 Word Length',
+    };
+
+    toast({
+      title: `${hintLabels[hintType]} revealed! ✨`,
+      description: "5 points deducted. Use it wisely!",
+    });
   };
 
   const handleStartGame = () => {
@@ -85,6 +127,7 @@ const Index = () => {
     setAiPrediction("");
     setShowResult(false);
     setIsCorrect(false);
+    setHintsUsed({ firstLetter: false, lastLetter: false, wordLength: false });
     setTimeout(() => inputRef.current?.focus(), 100);
   };
 
@@ -97,6 +140,7 @@ const Index = () => {
     setScore(0);
     setRounds(0);
     setGameStarted(false);
+    setHintsUsed({ firstLetter: false, lastLetter: false, wordLength: false });
   };
 
   if (!gameStarted) {
@@ -249,6 +293,17 @@ const Index = () => {
               </div>
             )}
 
+            {/* Hints Panel */}
+            {aiPrediction && !showResult && (
+              <HintsPanel
+                aiPrediction={aiPrediction}
+                score={score}
+                hintsUsed={hintsUsed}
+                onUseHint={handleUseHint}
+                disabled={showResult}
+              />
+            )}
+
             {/* Step 2: Make Your Guess */}
             {aiPrediction && !showResult && (
               <div className="space-y-3 animate-slide-up">
@@ -310,7 +365,8 @@ const Index = () => {
           <div className="flex items-start gap-3">
             <span className="text-2xl">💡</span>
             <div className="space-y-2 text-sm text-muted-foreground">
-              <p><strong>Tip:</strong> The AI learns from your inputs! Each round helps improve predictions.</p>
+              <p><strong>Strategy Tip:</strong> Use hints wisely! Each hint costs 5 points but can help you guess correctly.</p>
+              <p><strong>AI Learning:</strong> The AI learns from your inputs! Each round helps improve predictions.</p>
               <p><strong>Categories:</strong> Switch topics anytime to explore different word patterns!</p>
               {category === 'nature' && <p>Try: "The sun is..." or "Trees are..."</p>}
               {category === 'technology' && <p>Try: "Technology is..." or "Computers are..."</p>}
