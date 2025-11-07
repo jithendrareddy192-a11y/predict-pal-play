@@ -3,14 +3,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LanguageModel, Difficulty } from "@/lib/languageModel";
+import { LanguageModel, Difficulty, Category } from "@/lib/languageModel";
 import ThinkingDots from "@/components/ThinkingDots";
 import FeedbackMessage from "@/components/FeedbackMessage";
 import ScoreDisplay from "@/components/ScoreDisplay";
+import CategorySelector from "@/components/CategorySelector";
 
 const Index = () => {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
-  const [languageModel] = useState(() => new LanguageModel(difficulty));
+  const [category, setCategory] = useState<Category>('nature');
+  const [languageModel] = useState(() => new LanguageModel(difficulty, category));
   const [phrase, setPhrase] = useState("");
   const [userGuess, setUserGuess] = useState("");
   const [aiPrediction, setAiPrediction] = useState("");
@@ -26,6 +28,21 @@ const Index = () => {
   useEffect(() => {
     languageModel.setDifficulty(difficulty);
   }, [difficulty, languageModel]);
+
+  const handleCategoryChange = (newCategory: Category) => {
+    setCategory(newCategory);
+    languageModel.setCategory(newCategory);
+    
+    // Reset game state when switching categories during gameplay
+    if (gameStarted) {
+      setPhrase("");
+      setUserGuess("");
+      setAiPrediction("");
+      setShowResult(false);
+      setIsCorrect(false);
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  };
 
   const handleStartGame = () => {
     setGameStarted(true);
@@ -96,23 +113,32 @@ const Index = () => {
             </h1>
             
             <p className="text-lg text-muted-foreground max-w-lg mx-auto">
-              Can you guess what I'm thinking? Type a phrase, and I'll predict the next word. 
+              Can you guess what I'm thinking? Choose a topic, type a phrase, and I'll predict the next word. 
               See if we're on the same wavelength! 💫
             </p>
 
-            <div className="space-y-4 pt-6">
-              <div className="flex items-center gap-3 justify-center">
-                <span className="text-2xl">⚙️</span>
-                <Select value={difficulty} onValueChange={(value) => setDifficulty(value as Difficulty)}>
-                  <SelectTrigger className="w-48 bg-background border-2 border-border">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="easy">Easy 🌱</SelectItem>
-                    <SelectItem value="medium">Medium 🌟</SelectItem>
-                    <SelectItem value="hard">Hard 🔥</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="space-y-6 pt-6">
+              <CategorySelector 
+                selectedCategory={category}
+                onCategoryChange={handleCategoryChange}
+              />
+              <div>
+                <label className="flex items-center gap-2 text-sm font-semibold text-foreground justify-center mb-3">
+                  <span className="text-xl">⚙️</span>
+                  Choose difficulty:
+                </label>
+                <div className="flex justify-center">
+                  <Select value={difficulty} onValueChange={(value) => setDifficulty(value as Difficulty)}>
+                    <SelectTrigger className="w-48 bg-background border-2 border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="easy">Easy 🌱</SelectItem>
+                      <SelectItem value="medium">Medium 🌟</SelectItem>
+                      <SelectItem value="hard">Hard 🔥</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <Button 
@@ -139,12 +165,17 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background p-4 md:p-8">
       <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
         {/* Header */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <span className="text-4xl">🧠</span>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Word Prediction
-            </h1>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                Word Prediction
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Topic: <span className="font-semibold text-foreground capitalize">{category}</span>
+              </p>
+            </div>
           </div>
           
           <div className="flex items-center gap-3">
@@ -170,6 +201,15 @@ const Index = () => {
 
         {/* Score Display */}
         <ScoreDisplay score={score} rounds={rounds} />
+
+        {/* Category Selector */}
+        <Card className="p-6 bg-card/95 backdrop-blur-sm border-2 border-border">
+          <CategorySelector 
+            selectedCategory={category}
+            onCategoryChange={handleCategoryChange}
+            disabled={isThinking || !!aiPrediction}
+          />
+        </Card>
 
         {/* Main Game Card */}
         <Card className="p-6 md:p-8 bg-card/95 backdrop-blur-sm border-2 border-border shadow-[0_0_50px_rgba(168,85,247,0.1)]">
@@ -271,7 +311,11 @@ const Index = () => {
             <span className="text-2xl">💡</span>
             <div className="space-y-2 text-sm text-muted-foreground">
               <p><strong>Tip:</strong> The AI learns from your inputs! Each round helps improve predictions.</p>
-              <p>Try common phrases like "The weather is..." or "Life is..." for better results!</p>
+              <p><strong>Categories:</strong> Switch topics anytime to explore different word patterns!</p>
+              {category === 'nature' && <p>Try: "The sun is..." or "Trees are..."</p>}
+              {category === 'technology' && <p>Try: "Technology is..." or "Computers are..."</p>}
+              {category === 'emotions' && <p>Try: "Happiness is..." or "Love is..."</p>}
+              {category === 'food' && <p>Try: "Pizza is..." or "Coffee tastes..."</p>}
             </div>
           </div>
         </Card>
